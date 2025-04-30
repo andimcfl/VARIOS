@@ -92,7 +92,8 @@ acvdmx_gdbs_2<-acvdmx_gdbs|>
 
 ##ÁREA VERDE URBANA PER CAPITA 2020? ----
 av_pc_2018<-acvdmx_gdbs_2|>
-  left_join(RESAGEBURB_09XLSX20, by = "CVEGEO")|>
+  left_join(RESAGEBURB_09XLSX20, by = "CVEGEO")use_git()
+|>
   mutate(AV_PC_18 = round(area_total/POBTOT,2))
 
 

@@ -160,6 +160,7 @@ iso_merged <- do.call(rbind, iso_buffers)
 
 # Visualización rápida
 tmap_mode("view")
+
 tm_shape(rnc) + tm_lines(col = "gray") +
   tm_shape(iso_merged) + tm_lines(col = "darkblue") +
   tm_shape(ep) + tm_dots(col = "blue", "purple", size = 0.5)
