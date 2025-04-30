@@ -164,10 +164,7 @@ tm_shape(rnc) + tm_lines(col = "gray") +
   tm_shape(iso_merged) + tm_lines(col = "darkblue") +
   tm_shape(ep) + tm_dots(col = "blue", "purple", size = 0.5)
          
-  
-               
-
-st_write(iso_merged, "iso_merged.shp", delete_dsn = TRUE)
+##st_write(iso_merged, "iso_merged.shp", delete_dsn = TRUE)
 
 
 
