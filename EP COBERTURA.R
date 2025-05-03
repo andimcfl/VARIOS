@@ -5,7 +5,8 @@ libraries <- c("tidyverse",
                "tidygraph", 
                "units", 
                "tmap", 
-               "igraph")
+               "igraph", 
+               "concaveman")
 
 installed_packages <- rownames(installed.packages())
 libraries_to_install <- setdiff(libraries, installed_packages)
@@ -72,12 +73,9 @@ mza_ur_mgn_2020<-undades_geoest|>
 ##ESPACIO PÚBLICO----
 ep <- st_read("https://datos.cdmx.gob.mx/dataset/33f7efb2-540a-41e5-a7b2-f5c83e030b54/resource/e443a870-08d2-42ad-843f-ac4e0eb5541e/download/inventario-de-reas-verdes-en-la-ciudad-de-mxico..json") |>
   st_transform(crs = 32614) |>
-  filter(categoria_ %in% c('Parques, arboledas y alamedas', 'Plazas y jardines'))|>
+  filter(categoria_ %in% c("Parques, arboledas y alamedas", "Plazas y jardines"))|>
   st_centroid()|>
   st_intersection(limite)
-
-
-st_write(ep, "ep.shp")
 
 ##RED VIAL----
 # url <-"https://www.inegi.org.mx/contenidos/productos/prod_serv/contenidos/espanol/bvinegi/productos/geografia/caminos/2024/794551132166_s.zip"
@@ -99,73 +97,71 @@ red <- as_sfnetwork(rnc, directed = FALSE) |>
   mutate(weight = long)
 
 
-st_write(rnc, "rnc.shp",  delete_dsn = TRUE)
-
 # Función para establecer límite de distancia según categoría
 limites <- function(categoria) {
-  if (categoria %in% c('Parques, arboledas y alamedas')) {
+  if (categoria == "Parques, arboledas y alamedas") {
     return(set_units(600, "m"))
   } else {
     return(set_units(400, "m"))
   }
 }
 
-# Lista de subredes accesibles por punto
-iso_buffers <- lapply(1:nrow(ep), function(i) {
+# Función auxiliar para construir un sf uniforme
+crear_poligono_sf <- function(geom, cat, id, metodo) {
+  st_sf(
+    geometry = st_sfc(geom),
+    categoria_ = cat,
+    id = id,
+    metodo = metodo,
+    crs = 32614
+  )
+}
+
+# Generación de polígonos de cobertura
+iso_poligonos <- lapply(1:nrow(ep), function(i) {
   punto <- ep[i, ]
   cat <- punto$categoria_
   max_dist <- limites(cat)
-  max_dist <- set_units(max_dist, "m")  # Asegura que tiene unidades
   
-  # Nodo más cercano
-  nodo_cercano <- st_nearest_feature(
-    punto,
-    red |> activate("nodes") |> st_as_sf()
-  )
-  
-  # Extraer pesos (en metros)
+  nodo_cercano <- st_nearest_feature(punto, red |> activate("nodes") |> st_as_sf())
   pesos <- red |> activate("edges") |> pull(weight)
-  
-  # Calcular distancias desde el nodo de origen
   distancias <- igraph::distances(graph = red, v = nodo_cercano, weights = pesos)
-  
-  # Vector de distancias con unidades
   distancias_vec <- set_units(as.numeric(distancias), "m")
+  dist_nodo <- distancias_vec[nodo_cercano]
   
-  # Asignar distancias a nodos
-  red_con_dist <- red |>
-    activate("nodes") |>
-    mutate(dist = distancias_vec)
-  
-  # Índices de nodos dentro del rango
+  red_con_dist <- red |> activate("nodes") |> mutate(dist = distancias_vec)
   nodos_cercanos_idx <- which(distancias_vec <= max_dist)
+  nodos_cercanos <- red_con_dist |> 
+    activate("nodes") |> 
+    slice(nodos_cercanos_idx) |> 
+    st_as_sf()
   
-  # Nodos dentro del rango
-  nodos_cercanos <- red_con_dist |>
-    activate("nodes") |>
-    slice(nodos_cercanos_idx)
-  
-  # Filtrar aristas que conectan solo esos nodos
-  subred_edges <- red_con_dist |>
-    activate("edges") |>
-    filter(.N()$dist[from] <= max_dist & .N()$dist[to] <= max_dist)
-  
-  # Convertir a sf
-  st_as_sf(subred_edges)
+  if (dist_nodo > set_units(100, "m")) {
+    # Si el punto está lejos de la red, se usa buffer de 100 m
+    poligono_geom <- st_geometry(st_buffer(punto, dist = set_units(100, "m")))
+    return(crear_poligono_sf(poligono_geom, cat, i, "buffer_100m"))
+  } else {
+    if (nrow(nodos_cercanos) >= 3) {
+      poligono_geom <- st_geometry(concaveman(nodos_cercanos))
+      return(crear_poligono_sf(poligono_geom, cat, i, "concaveman"))
+    } else {
+      poligono_geom <- st_geometry(st_buffer(punto, dist = set_units(100, "m")))
+      return(crear_poligono_sf(poligono_geom, cat, i, "buffer_100m"))
+    }
+  }
 })
 
-# Combinar las isodistancias en una sola capa
-iso_merged <- do.call(rbind, iso_buffers)
-
+# Combinar polígonos válidos
+iso_poligonos_sf <- do.call(rbind, iso_poligonos[!sapply(iso_poligonos, is.null)])
 
 # Visualización rápida
 tmap_mode("view")
 
 tm_shape(rnc) + tm_lines(col = "gray") +
-  tm_shape(iso_merged) + tm_lines(col = "darkblue") +
+  tm_shape(iso_poligonos_sf) + tm_lines(col = "darkblue") +
   tm_shape(ep) + tm_dots(col = "blue", "purple", size = 0.5)
          
-##st_write(iso_merged, "iso_merged.shp", delete_dsn = TRUE)
+st_write(iso_poligonos_sf, "iso_poligonos_sf.shp", delete_dsn = TRUE)
 
 
 
