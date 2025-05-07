@@ -2,7 +2,8 @@
 libraries <- c("tidyverse",
                "sf",  
                "DBI", 
-               "RSQLite")
+               "RSQLite", 
+               "tools")
 
 installed_packages <- rownames(installed.packages())
 libraries_to_install <- setdiff(libraries, installed_packages)
@@ -32,11 +33,19 @@ setwd(directorio)
 ###################################################################################################################################
 
 ##Áreas verdes de la Ciudad de México (2017-2018)----
+# URL del archivo ZIP
 url <- "http://www.conabio.gob.mx/informacion/gis/maps/ccl/avcdmxgw_c.zip"
-options(timeout = 5000)
-download.file(url, 'avcdmxgw_c.zip', mode = "wb")
+options(timeout = 9000)
+temp_zip <- tempfile(fileext = ".zip")
+temp_dir <- tempdir()
+download.file(url, temp_zip, mode = "wb")
+unzip(temp_zip, exdir = temp_dir)
 
-zip::unzip("avcdmxgw_c.zip", exdir = "avcdmx_1718")
+mydb <- dbConnect(SQLite(), "avcdmxgw_c/avcdmxuw")
+tables <- dbListTables(mydb)
+print(tables)
+
+
 
 acvdmx_gdbs<-st_read("avcdmx_1718/avcdmx_1718.gdb")|>
   mutate(CVEGEO = CVE_ENT)|>
