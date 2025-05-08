@@ -3,7 +3,8 @@ libraries <- c("tidyverse",
                "sf",  
                "DBI", 
                "RSQLite", 
-               "tools")
+               "tools", 
+               "tmap")
 
 installed_packages <- rownames(installed.packages())
 libraries_to_install <- setdiff(libraries, installed_packages)
@@ -41,10 +42,25 @@ temp_dir <- tempdir()
 download.file(url, temp_zip, mode = "wb")
 unzip(temp_zip, exdir = temp_dir)
 
-mydb <- dbConnect(SQLite(), "avcdmxgw_c/avcdmxuw")
+
+mydb <- dbConnect(SQLite(), "avcdmxgw_c/avcdmxuw.sqlite")
 tables <- dbListTables(mydb)
 print(tables)
 
+vector_data <- read_sf(dsn = "avcdmxgw_c/avcdmxuw.sqlite", layer ="avcdmxuw")
+                       
+
+# Filtrar registros con geometrías válidas
+vector_filtrado <- vector_data %>%
+  filter(NOM_MUN == "Azcapotzalco", cobertura == "Cuerpo de agua") 
+
+
+
+
+tmap_mode("view")
+tm_shape(vector_data) +
+  tm_polygons(col = "lightgreen", border.col = "gray") +
+  tm_layout(title = "Azcapotzalco")
 
 
 acvdmx_gdbs<-st_read("avcdmx_1718/avcdmx_1718.gdb")|>
