@@ -41,9 +41,18 @@ RESAGEBURB_09XLSX20<- readxl::read_excel(file.path(directorio_base, "RESAGEBURB_
   mutate(CVEGEO = paste0(ENTIDAD, MUN, LOC, AGEB, MZA),
          CVE_MUNI = paste0(ENTIDAD, MUN))|>
   mutate_all(~ gsub("\\*", "", .)) |> 
-  mutate(across(9:230, ~ as.numeric(., na.rm = TRUE)))|>
+  mutate(across(9:230, ~ as.numeric(., na.rm = TRUE)))
+
+
+|>
   filter(!MZA == "000")|>
   select(CVEGEO,POBTOT)
+
+
+RESAGEBURB_09XLSX20_F<- RESAGEBURB_09XLSX20|>
+  filter(NOM_MUN == "Total de la entidad Ciudad de México")|>
+  select(NOM_MUN, TOTHOG)
+
 
 # ##MARCO GEOESTADÍSTICO NACIONAL 2020----
 # url <-"https://www.inegi.org.mx/contenidos/productos/prod_serv/contenidos/espanol/bvinegi/productos/geografia/marcogeo/889463807469/09_ciudaddemexico.zip"
