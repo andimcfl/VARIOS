@@ -476,5 +476,38 @@ pob_residuos <- read_excel("C:/Users/brenp/Downloads/CNGMD2019_M6.xlsx",
   mutate(porcentaje = municipios*100/sum(municipios))
 
 #TEMA: GESTIÓN DEL RECURSO HÍDRICO----
-##
+##CALIDAD DEL AGUA----
+leer_cali_agua <- function(anio)
+  { 
+  
+  urls <- list("20" = "https://www.inegi.org.mx/contenidos/programas/enigh/nc/2016/microdatos/enigh2016_ns_concentradohogar_csv.zip",
+               "2018" = "https://www.inegi.org.mx/contenidos/programas/enigh/nc/2018/microdatos/enigh2018_ns_concentradohogar_csv.zip",
+               "2020" = "https://www.inegi.org.mx/contenidos/programas/enigh/nc/2020/microdatos/enigh2020_ns_concentradohogar_csv.zip",
+               "2022" = "https://www.inegi.org.mx/contenidos/programas/enigh/nc/2022/microdatos/enigh2022_ns_concentradohogar_csv.zip"
+  )
+  
+  # Archivo y directorio temporales
+  temp_zip <- tempfile(fileext = ".zip")
+  temp_dir <- tempdir()
+  options(timeout = 800)
+  
+  # Descargar y descomprimir
+  download.file(urls[[as.character(anio)]], temp_zip, mode = "wb")
+  unzip(temp_zip, exdir = temp_dir)
+  
+  # Buscar el archivo de datos
+  enigh_datos <- list.files(temp_dir, pattern = "concentradohogar.csv", 
+                            full.names = TRUE, recursive = TRUE)
+  
+  # Leer el archivo como caracteres por defecto
+  datos <- read_csv(enigh_datos, col_types = NULL)
+  
+  unlink(temp_zip)
+  unlink(list.files(temp_dir, full.names = TRUE), recursive = TRUE)
+  
+  return(datos)
+}
+
+  
+}
 
